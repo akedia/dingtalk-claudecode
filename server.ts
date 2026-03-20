@@ -48,7 +48,10 @@ import { join, sep, extname } from 'path'
 // State directories
 // ---------------------------------------------------------------------------
 
-const STATE_DIR = join(homedir(), '.claude', 'channels', 'dingtalk')
+// Support DINGTALK_STATE_DIR for multi-bot isolation on the same machine.
+// Each bot can use a separate state directory to avoid credential/access conflicts.
+// Example: DINGTALK_STATE_DIR=~/.claude/channels/dingtalk-dev
+const STATE_DIR = process.env.DINGTALK_STATE_DIR || join(homedir(), '.claude', 'channels', 'dingtalk')
 const ACCESS_FILE = join(STATE_DIR, 'access.json')
 const APPROVED_DIR = join(STATE_DIR, 'approved')
 const ENV_FILE = join(STATE_DIR, '.env')
