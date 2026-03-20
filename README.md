@@ -47,11 +47,13 @@ claude plugin install dingtalk@dingtalk-claudecode
 
 **5. 用 channel 模式重启**
 
-不加 `--channels` 服务器不会连接钉钉 — 退出当前会话，重新启动：
+退出当前会话，用 channel 模式重新启动。由于本插件不在官方白名单中，需要使用开发模式加载：
 
 ```sh
-claude --channels plugin:dingtalk@dingtalk-claudecode
+claude --dangerously-load-development-channels plugin:dingtalk@dingtalk-claudecode
 ```
+
+> 注意：`--channels` 仅允许官方白名单插件。第三方 channel 插件必须使用 `--dangerously-load-development-channels`。
 
 **6. 配对**
 
