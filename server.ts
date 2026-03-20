@@ -10,6 +10,17 @@
  * Messages arrive via dingtalk-stream SDK callback.
  */
 
+// CRITICAL: Redirect all console output to stderr BEFORE any imports.
+// The dingtalk-stream SDK writes "[timestamp] connect success" to stdout via
+// console.info, which corrupts the MCP stdio protocol. MCP uses stdout
+// exclusively for JSON-RPC messages — any stray output breaks the transport.
+for (const method of ['log', 'info', 'warn', 'debug', 'trace'] as const) {
+  const _orig = console[method]
+  console[method] = (...args: any[]) => {
+    process.stderr.write(args.map(String).join(' ') + '\n')
+  }
+}
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
