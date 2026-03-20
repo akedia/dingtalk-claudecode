@@ -1,170 +1,172 @@
-# DingTalk (钉钉)
+# DingTalk（钉钉）Channel for Claude Code
 
-Connect a DingTalk bot to your Claude Code with an MCP server.
+通过 MCP 服务器将钉钉机器人连接到 Claude Code。
 
-The MCP server connects to DingTalk via Stream Mode (WebSocket) and provides tools to Claude to reply and send files. When you message the bot, the server forwards the message to your Claude Code session.
+服务器使用 Stream 模式（WebSocket）连接钉钉，当用户给机器人发消息时，服务器将消息转发给当前 Claude Code 会话，并提供工具让 Claude 回复消息和发送文件。
 
-## Prerequisites
+## 前提条件
 
-- [Bun](https://bun.sh) — the MCP server runs on Bun. Install with `curl -fsSL https://bun.sh/install | bash`.
+- [Bun](https://bun.sh) — MCP 服务器运行在 Bun 上。安装：`curl -fsSL https://bun.sh/install | bash`
 
-## Quick Setup
-> Default pairing flow for a single-user DM bot. See below for groups and multi-user setups.
+## 快速开始
 
-**1. Create a DingTalk application and bot.**
+> 默认配对流程，适用于单用户私聊场景。群聊和多用户请参考下方说明。
 
-Go to the [DingTalk Developer Platform](https://open-dev.dingtalk.com/) and create an Enterprise Internal Application (企业内部应用).
+**1. 创建钉钉应用和机器人**
 
-Navigate to **Robot** (机器人) and enable the bot capability.
+前往[钉钉开放平台](https://open-dev.dingtalk.com/)，创建一个**企业内部应用**。
 
-Under **Bot Configuration** (机器人配置), set the message receiving mode to **Stream Mode** (Stream 模式). No public domain required.
+进入**机器人**页面，启用机器人能力。
 
-**2. Get your credentials.**
+在**机器人配置**中，将消息接收模式设置为 **Stream 模式**。无需公网域名。
 
-Navigate to **Credentials** (凭证与基础信息) and find:
-- **AppKey** (Client ID)
-- **AppSecret** (Client Secret)
+**2. 获取凭证**
 
-**3. Install the plugin.**
+进入**凭证与基础信息**页面，找到：
+- **AppKey**（Client ID）
+- **AppSecret**（Client Secret）
 
-These are Claude Code commands — run `claude` to start a session first.
+**3. 安装插件**
 
-```
+以下是 Claude Code 命令 — 先运行 `claude` 启动会话。
+
+```sh
 claude plugin marketplace add https://github.com/akedia/dingtalk-claudecode
 claude plugin install dingtalk@dingtalk-claudecode
 ```
 
-Check that `/dingtalk:configure` tab-completes. If not, restart your session.
+确认 `/dingtalk:configure` 能 tab 补全。如果不能，重启会话。
 
-**4. Give the server the credentials.**
+**4. 配置凭证**
 
 ```
 /dingtalk:configure <clientId> <clientSecret>
 ```
 
-Writes `DINGTALK_CLIENT_ID=...` and `DINGTALK_CLIENT_SECRET=...` to `~/.claude/channels/dingtalk/.env`. You can also write that file by hand, or set the variables in your shell environment — shell takes precedence.
+会将 `DINGTALK_CLIENT_ID=...` 和 `DINGTALK_CLIENT_SECRET=...` 写入 `~/.claude/channels/dingtalk/.env`。你也可以手动编辑该文件，或设置环境变量（环境变量优先级更高）。
 
-**5. Relaunch with the channel flag.**
+**5. 用 channel 模式重启**
 
-The server won't connect without this — exit your session and start a new one:
+不加 `--channels` 服务器不会连接钉钉 — 退出当前会话，重新启动：
 
 ```sh
 claude --channels plugin:dingtalk@dingtalk-claudecode
 ```
 
-**6. Pair.**
+**6. 配对**
 
-DM your bot on DingTalk — it replies with a 6-character pairing code. In your assistant session:
+在钉钉中私聊你的机器人 — 它会回复一个 6 位配对码。在 Claude Code 会话中运行：
 
 ```
-/dingtalk:access pair <code>
+/dingtalk:access pair <配对码>
 ```
 
-Your next DM reaches the assistant.
+之后你的私聊消息就会到达 Claude。
 
-**7. Lock it down.**
+**7. 锁定访问**
 
-Pairing is for capturing IDs. Once you're in, switch to `allowlist` so strangers don't get pairing-code replies. Ask Claude to do it, or `/dingtalk:access policy allowlist` directly.
+配对只是为了获取用户 ID。完成后切换到 `allowlist` 模式，防止陌生人触发配对码：
 
-## Access control
+```
+/dingtalk:access policy allowlist
+```
 
-### DM Policies
+## 访问控制
 
-- **pairing** (default): Unknown users get a pairing code. Approve with `/dingtalk:access pair <code>`.
-- **allowlist**: Only staff IDs in the allowlist can DM the bot.
-- **disabled**: No DMs accepted.
+### 私聊策略
 
-### Group Support
+| 策略 | 说明 |
+| --- | --- |
+| `pairing`（默认） | 未知用户收到配对码，用 `/dingtalk:access pair <code>` 审批 |
+| `allowlist` | 仅允许列表中的 staffId 私聊 |
+| `disabled` | 不接受任何私聊 |
 
-Groups are opt-in by conversation ID:
+### 群聊支持
+
+群聊按 conversationId 逐个启用：
 
 ```
 /dingtalk:access group add <conversationId>
 ```
 
-By default, the bot only responds when @mentioned in groups. Use `--no-mention` to respond to all messages.
+默认要求 @机器人 才响应。使用 `--no-mention` 可响应所有消息。
 
-### Getting IDs
+### 获取 ID
 
-- **Staff ID**: Automatically captured during pairing
-- **Conversation ID**: Add bot to group, @mention it, check logs
+- **Staff ID**：配对时自动获取
+- **Conversation ID**：将机器人加入群聊，@它，查看日志中的 conversationId
 
-## Tools exposed to the assistant
+## 工具
 
-| Tool | Purpose |
+| 工具 | 用途 |
 | --- | --- |
-| `reply` | Send to a chat. Takes `chat_id` + `text`, optionally `files` (absolute paths) for attachments. Auto-chunks long text. Uses sessionWebhook when available for fast delivery, falls back to REST API. |
-| `send_file` | Send a file to a chat. Uploads via DingTalk media API and sends as a file message. Max 20MB. |
+| `reply` | 向聊天发送消息。参数：`chat_id` + `text`，可选 `files`（绝对路径数组）附加文件。自动分块长文本。优先使用 sessionWebhook 快速回复，超时后降级到 REST API。 |
+| `send_file` | 向聊天发送文件。通过钉钉媒体 API 上传并发送文件消息。最大 20MB。 |
 
-Inbound messages are forwarded immediately — DingTalk Stream Mode receives them via WebSocket.
+## 支持的消息类型
 
-## Message Types
+| 类型 | 处理方式 |
+| --- | --- |
+| 文本 | 直接转发 |
+| 图片 | 下载到 `~/.claude/channels/dingtalk/inbox/`，路径包含在通知中 |
+| 富文本 | 提取文本和图片 |
+| 语音 | 包含语音识别文本（如果钉钉提供） |
+| 视频 | 标记为 `[视频]` |
+| 文件 | 显示文件名，下载到 inbox |
+| 链接 | 提取标题、描述和 URL |
 
-The bot handles these inbound message types:
-- **Text**: Plain text messages
-- **Picture**: Downloaded to `~/.claude/channels/dingtalk/inbox/` and path included in notification
-- **Rich Text**: Text + embedded images
-- **Audio**: Speech recognition text included when available
-- **Video**: Marked as `[视频]`
-- **File**: File name shown, downloaded to inbox
-- **Link**: Title, text, and URL extracted
+## 已知限制
 
-## No history or search
+### 同时只能有一个会话连接
 
-DingTalk's Stream API exposes **neither** message history nor search. The bot only sees messages as they arrive. If the assistant needs earlier context, it will ask you to paste or summarize.
+钉钉 Stream 连接绑定到单个 Claude Code 会话。只有使用 `--channels` 启动的会话才能接收消息。这与官方的 Discord 和 Telegram channel 设计一致。
 
-## Limitations
+- **切换会话**：先关闭当前会话（`/exit` 或 Ctrl+C），再用 `--channels` 启动新会话
+- **普通会话**：不加 `--channels` 的 `claude` 正常使用 — skill 命令（`/dingtalk:configure`、`/dingtalk:access`）仍然可用，但不会收到钉钉消息
+- **多会话冲突**：如果同时有多个会话使用 `--channels`，钉钉会在连接间负载均衡分发消息，导致消息随机到达不同会话，应避免这种情况
 
-### One session at a time
+### 工作目录固定
 
-The DingTalk Stream connection is bound to a single Claude Code session. Only the session started with `--channels` receives messages. This is the same design as the official Discord and Telegram channels.
+工作目录在会话启动时确定，**无法通过钉钉消息远程切换**。如果你不在电脑旁，无法切换到其他项目目录。
 
-- **Starting a new channel session**: Close the current session first (`/exit` or Ctrl+C), then start a new one with `--channels`.
-- **Non-channel sessions**: Running `claude` without `--channels` works normally — skills (`/dingtalk:configure`, `/dingtalk:access`) are still available, but the bot won't receive messages.
-- **Multiple sessions**: If multiple sessions connect with `--channels` simultaneously, DingTalk load-balances messages across connections unpredictably. Avoid this.
+**变通方案**：在主目录启动会话（`cd ~ && claude --channels ...`），然后在钉钉消息中使用绝对路径（如"帮我看看 E:\project-a\src\main.ts"）。Claude 可以通过绝对路径访问任何位置的文件。
 
-### Workspace is fixed per session
+### 无消息历史和搜索
 
-The working directory is set when the session starts and **cannot be changed remotely** via DingTalk messages. If you need to work on a different project while away from your PC, you must be at the terminal to restart the session in a new directory.
+钉钉 Stream API 不提供消息历史和搜索功能。机器人只能看到实时到达的消息。如果 Claude 需要之前的上下文，会要求你粘贴或总结。
 
-**Workaround**: Start the session in your home directory (`cd ~ && claude --channels ...`), then use absolute paths in DingTalk messages (e.g. "read E:\project-a\src\main.ts"). Claude can access any file via absolute paths regardless of the working directory.
+### 不支持消息编辑和表情回应
 
-### No message history or search
+与 Discord 和 Telegram 不同，钉钉机器人 API 不支持编辑已发送的消息或添加表情回应。`reply` 工具只能发送新消息。
 
-DingTalk's Stream API provides no message history or search capability. The bot only sees messages as they arrive in real time. If Claude needs earlier context, it will ask you to paste or summarize.
+### 钉钉特有限制
 
-### No message editing or reactions
+- **文本长度**：sessionWebhook 单条消息约 2000 字符，超长回复自动拆分为多条消息
+- **sessionWebhook 过期**：钉钉的 sessionWebhook（用于快速回复）约 35 分钟后过期，之后服务器降级到需要 access token 的 REST API
+- **文件大小**：通过钉钉媒体 API 上传文件最大 20MB
+- **Markdown 支持**：钉钉的 Markdown 渲染能力有限（不支持表格，格式化有限），服务器默认发送纯文本
 
-Unlike Discord and Telegram, DingTalk's bot API does not support editing sent messages or adding emoji reactions. The `reply` tool sends new messages only.
-
-### DingTalk-specific constraints
-
-- **Text chunk limit**: ~2000 characters per message via sessionWebhook. Longer replies are automatically split into multiple messages.
-- **sessionWebhook expiry**: DingTalk's sessionWebhook (used for fast replies) expires after ~35 minutes. After expiry, the server falls back to the REST API which requires an access token.
-- **File size limit**: 20MB per file upload via the DingTalk media API.
-- **Markdown support**: DingTalk's markdown rendering is limited — no tables, limited formatting. The server sends plain text by default.
-
-## Architecture
+## 架构
 
 ```
-DingTalk (钉钉)
+钉钉 App
     │
-    │ Stream Mode (WebSocket)
+    │ Stream 模式（WebSocket）
     ▼
 ┌──────────────┐
-│  server.ts   │  ← MCP server (Bun)
+│  server.ts   │  ← MCP 服务器（Bun）
 │  dingtalk-   │
 │  stream SDK  │
 └──────┬───────┘
-       │ stdio (MCP protocol)
+       │ stdio（MCP 协议）
        ▼
 ┌──────────────┐
 │  Claude Code │
 └──────────────┘
 ```
 
-The server uses:
-- `dingtalk-stream` SDK for receiving messages via WebSocket
-- DingTalk REST API for sending proactive messages
-- `sessionWebhook` for fast inline replies (when available)
-- `@modelcontextprotocol/sdk` for MCP communication with Claude Code
+服务器使用：
+- `dingtalk-stream` SDK 通过 WebSocket 接收消息
+- 钉钉 REST API 发送主动消息
+- `sessionWebhook` 快速内联回复（可用时优先使用）
+- `@modelcontextprotocol/sdk` 与 Claude Code 进行 MCP 通信
