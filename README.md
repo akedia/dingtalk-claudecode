@@ -20,13 +20,24 @@
 
 在**机器人配置**中，将消息接收模式设置为 **Stream 模式**。无需公网域名。
 
-**2. 获取凭证**
+**2. 申请权限**
+
+在应用的**权限管理**页面，搜索并申请以下权限：
+
+| 权限 | 权限码 | 用途 |
+| --- | --- | --- |
+| 企业内机器人发送消息 | `qyapi_robot_sendmsg` | 通过 REST API 主动发送私聊/群聊消息（必需） |
+| 获取企业员工通讯录 | `qyapi_get_member` | 查询用户名称（可选，用于显示发送者昵称） |
+
+> 如果不申请 `qyapi_robot_sendmsg`，bot 将无法发送任何消息，会报 `AccessDenied` 错误。
+
+**3. 获取凭证**
 
 进入**凭证与基础信息**页面，找到：
 - **AppKey**（Client ID）
 - **AppSecret**（Client Secret）
 
-**3. 安装插件**
+**4. 安装插件**
 
 以下是 Claude Code 命令 — 先运行 `claude` 启动会话。
 
@@ -37,7 +48,7 @@ claude plugin install dingtalk@dingtalk-claudecode
 
 确认 `/dingtalk:configure` 能 tab 补全。如果不能，重启会话。
 
-**4. 配置凭证**
+**5. 配置凭证**
 
 ```
 /dingtalk:configure <clientId> <clientSecret>
@@ -45,7 +56,7 @@ claude plugin install dingtalk@dingtalk-claudecode
 
 会将 `DINGTALK_CLIENT_ID=...` 和 `DINGTALK_CLIENT_SECRET=...` 写入 `~/.claude/channels/dingtalk/.env`。你也可以手动编辑该文件，或设置环境变量（环境变量优先级更高）。
 
-**5. 用 channel 模式重启**
+**6. 用 channel 模式重启**
 
 退出当前会话，用 channel 模式重新启动。由于本插件不在官方白名单中，需要使用开发模式加载：
 
@@ -55,7 +66,7 @@ claude --dangerously-load-development-channels plugin:dingtalk@dingtalk-claudeco
 
 > 注意：`--channels` 仅允许官方白名单插件。第三方 channel 插件必须使用 `--dangerously-load-development-channels`。
 
-**6. 配对**
+**7. 配对**
 
 在钉钉中私聊你的机器人 — 它会回复一个 6 位配对码。在 Claude Code 会话中运行：
 
@@ -65,7 +76,7 @@ claude --dangerously-load-development-channels plugin:dingtalk@dingtalk-claudeco
 
 之后你的私聊消息就会到达 Claude。
 
-**7. 锁定访问**
+**8. 锁定访问**
 
 配对只是为了获取用户 ID。完成后切换到 `allowlist` 模式，防止陌生人触发配对码：
 
