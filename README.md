@@ -148,6 +148,63 @@ claude --dangerously-load-development-channels plugin:dingtalk@dingtalk-claudeco
 - **文件大小**：通过钉钉媒体 API 上传文件最大 20MB
 - **Markdown 支持**：钉钉的 Markdown 渲染能力有限（不支持表格，格式化有限），服务器默认发送纯文本
 
+## 常见问题 / 踩坑记录
+
+### `--channels` 无法加载第三方插件
+
+**现象**：`claude --channels plugin:dingtalk@dingtalk-claudecode` 报错或不加载 channel。
+
+**原因**：`--channels` 只允许官方白名单中的插件（Discord、Telegram 等）。第三方 channel 插件必须使用开发模式标志。
+
+**解决**：
+```sh
+claude --dangerously-load-development-channels plugin:dingtalk@dingtalk-claudecode
+```
+
+### 能发消息但收不到入站消息
+
+**现象**：`reply` 工具能成功发送钉钉消息，但用户在钉钉上给机器人发消息后 Claude 没有反应。
+
+**原因**：`dingtalk-stream` SDK 在连接成功时会通过 `console.info()` 输出 `[timestamp] connect success` 到 stdout。MCP 协议使用 stdout 进行 JSON-RPC 通信，任何非协议输出都会破坏传输通道。
+
+**已修复**：server.ts 在所有 import 之前将 `console.log/info/warn/debug/trace` 重定向到 stderr。如果你 fork 了旧版本，确保包含这段代码：
+```typescript
+for (const method of ['log', 'info', 'warn', 'debug', 'trace'] as const) {
+  console[method] = (...args: any[]) => {
+    process.stderr.write(args.map(String).join(' ') + '\n')
+  }
+}
+```
+
+### REST API 报 `AccessDenied` 权限错误
+
+**现象**：发送消息时报 `qyapi_robot_sendmsg` 权限不足。
+
+**解决**：在钉钉开放平台 → 你的应用 → 权限管理中，申请并开通 `qyapi_robot_sendmsg`（机器人发送消息）权限。
+
+### REST API 报 `robotCode.notExist`
+
+**现象**：发送消息时报机器人不存在。
+
+**解决**：确认你的应用已开启机器人能力（应用 → 机器人 → 启用）。robotCode 默认等于 ClientID（AppKey），如果不同可通过环境变量 `DINGTALK_ROBOT_CODE` 单独设置。
+
+### `--resume` 和 `--channels` 一起用时收不到消息
+
+**现象**：恢复旧 session 并加 `--channels`/`--dangerously-load-development-channels` 后，发消息正常但收不到入站。
+
+**解决**：用全新 session 启动，不要 `--resume`：
+```sh
+claude --dangerously-load-development-channels plugin:dingtalk@dingtalk-claudecode
+```
+
+### 插件安装后 `/doctor` 报 `CLAUDE_PLUGIN_ROOT` 警告
+
+**现象**：在插件项目目录下运行 `/doctor` 显示 `.mcp.json` 缺少 `CLAUDE_PLUGIN_ROOT` 环境变量。
+
+**原因**：`CLAUDE_PLUGIN_ROOT` 由 Claude Code 在通过 `--channels`/`--dangerously-load-development-channels` 启动时自动注入。直接在项目目录运行 `claude` 时该变量不存在。
+
+**影响**：不影响功能，可以忽略。
+
 ## 架构
 
 ```
