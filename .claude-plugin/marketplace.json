@@ -1,0 +1,18 @@
+{
+  "name": "dingtalk-claudecode",
+  "description": "DingTalk (钉钉) channel plugin for Claude Code",
+  "owner": {
+    "name": "akedia"
+  },
+  "plugins": [
+    {
+      "name": "dingtalk",
+      "description": "DingTalk channel for Claude Code — messaging bridge with Stream Mode and built-in access control.",
+      "category": "productivity",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/akedia/dingtalk-claudecode.git"
+      }
+    }
+  ]
+}
